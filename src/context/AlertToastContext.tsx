@@ -14,6 +14,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, ty
 import { AlertToast, type ToastData } from "@/components/ui/AlertToast";
 import { supabase } from "@/lib/supabase";
 import { playNotificationSound } from "@/lib/alertSounds";
+import { showBrowserNotification } from "@/hooks/useNotificationPermission";
 import type { AlertType } from "@/components/ui/AlertCard";
 
 const MAX_VISIBLE = 3;
@@ -71,10 +72,18 @@ export function AlertToastProvider({ children }: { children: ReactNode }) {
         { event: "INSERT", schema: "public", table: "alerts" },
         (payload) => {
           const row = payload.new as Record<string, string>;
-          showToast({
-            alertType: row.type as AlertType,
-            description: row.description?.slice(0, 120) || "New alert received",
-            userName: row.user_name || "Unknown",
+          const alertType = row.type as AlertType;
+          const description = row.description?.slice(0, 120) || "New alert received";
+          const userName = row.user_name || "Unknown";
+
+          // In-app toast
+          showToast({ alertType, description, userName });
+
+          // Browser push notification (fires only when page is not focused)
+          showBrowserNotification(`🚨 ${alertType} Alert`, {
+            body: `${description}\n— ${userName}`,
+            tag: `alert-${row.id}`,
+            renotify: true,
           });
         }
       )

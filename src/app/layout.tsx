@@ -6,6 +6,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { WebRTCProvider } from "@/context/WebRTCContext";
 import { AlertToastProvider } from "@/context/AlertToastContext";
 import LayoutShell from "@/components/layout/LayoutShell";
+import ServiceWorkerRegistration from "@/components/pwa/ServiceWorkerRegistration";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -13,6 +15,14 @@ export const metadata: Metadata = {
   title: "UnitySOS — Emergency Response",
   description: "Offline-first disaster response app for emergencies",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "UnitySOS",
+  },
+  icons: {
+    apple: "/icon-192x192.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -33,6 +43,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
               </LayoutShell>
               <OfflineBanner />
+              <InstallPrompt />
+              <ServiceWorkerRegistration />
             </AlertToastProvider>
           </WebRTCProvider>
         </AuthProvider>

@@ -1,0 +1,58 @@
+﻿  Γû▓ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+> [PWA] Compile server
+> [PWA] Compile server
+> [PWA] Compile client (static)
+> [PWA] Auto register service worker with: C:\Users\Sooraj\Downloads\UnitySOS\node_modules\next-pwa\register.js
+> [PWA] Service worker: C:\Users\Sooraj\Downloads\UnitySOS\public\sw.js
+> [PWA]   url: /sw.js
+> [PWA]   scope: /
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+
+./src/app/post-alert/page.tsx
+235:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+248:17  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/components/ui/AlertCard.tsx
+56:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/hooks/useWebRTCPeers.ts
+266:22  Warning: The ref value 'connectionsRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'connectionsRef.current' to a variable inside the effect, and use that variable in the cleanup function.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/18) ...
+   Generating static pages (4/18) 
+   Generating static pages (8/18) 
+   Generating static pages (13/18) 
+ Γ£ô Generating static pages (18/18)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+Γöî Γùï /                                    1.91 kB         141 kB
+Γö£ Γùï /_not-found                          873 B          88.7 kB
+Γö£ Γùï /admin/access                        3.59 kB        91.4 kB
+Γö£ Γùï /admin/login                         5.42 kB         153 kB
+Γö£ Γùï /admin/signup                        7.29 kB         155 kB
+Γö£ Γùï /bluetooth                           7.26 kB         149 kB
+Γö£ Γùï /home                                11 kB           159 kB
+Γö£ Γùï /login                               4.62 kB         152 kB
+Γö£ Γùï /map                                 3.73 kB        91.5 kB
+Γö£ Γùï /nearby                              2.71 kB        90.5 kB
+Γö£ Γùï /post-alert                          4.73 kB         153 kB
+Γö£ Γùï /profile                             7.79 kB         156 kB
+Γö£ Γùï /resources                           2.37 kB        99.3 kB
+Γö£ Γùï /sos-request                         4.28 kB        92.1 kB
+Γöö Γùï /updates                             5.12 kB         144 kB
++ First Load JS shared by all            87.8 kB
+  Γö£ chunks/117-220d7bda382c7a1f.js       31.7 kB
+  Γö£ chunks/fd9d1056-13f2035e4b026c54.js  53.6 kB
+  Γöö other shared chunks (total)          2.44 kB
+
+
+Γùï  (Static)  prerendered as static content
+
