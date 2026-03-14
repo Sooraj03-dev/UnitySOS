@@ -14,6 +14,7 @@ export interface AlertData {
   userName: string;
   role: UserRole;
   badgeStatus: BadgeStatus;
+  photoUrl?: string;
 }
 
 const alertTypeCfg: Record<AlertType, { color: string; bg: string; border: string; dot: string }> = {
@@ -48,6 +49,18 @@ export function AlertCard({ alert, compact }: AlertCardProps) {
 
       {/* Description */}
       <p className="text-sm font-medium text-foreground leading-snug">{alert.description}</p>
+
+      {/* Photo thumbnail */}
+      {alert.photoUrl && (
+        <div className="rounded-xl overflow-hidden border border-border">
+          <img
+            src={alert.photoUrl}
+            alt="Alert photo"
+            className="w-full h-36 object-cover"
+            loading="lazy"
+          />
+        </div>
+      )}
 
       {/* Row 3: user + distance */}
       {!compact && (

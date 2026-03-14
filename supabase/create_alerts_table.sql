@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.alerts (
   description TEXT NOT NULL,
   latitude DOUBLE PRECISION,
   longitude DOUBLE PRECISION,
+  photo_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 

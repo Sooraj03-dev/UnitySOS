@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Camera, Shield, Upload, LogOut, ChevronRight, Edit3, Trash2, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Camera, Shield, LogOut, ChevronRight, Edit3, Trash2, AlertTriangle, Upload, FileText, Clock, CheckCircle, XCircle } from "lucide-react";
 import { BadgeStatusDisplay, RoleBadge, VerifiedBadge } from "@/components/ui/Badges";
 import type { UserRole, BadgeStatus } from "@/components/ui/Badges";
 import { AlertCard } from "@/components/ui/AlertCard";
@@ -9,6 +9,13 @@ import type { AlertData } from "@/components/ui/AlertCard";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { fetchUserAlerts, deleteAlert, countUserAlerts } from "@/lib/alerts";
+import {
+  uploadVerificationDoc,
+  submitVerification,
+  fetchMyVerifications,
+  deleteVerificationDoc,
+  type VerificationDoc,
+} from "@/lib/verification";
 
 const roles: UserRole[] = ["Civilian", "Volunteer", "Doctor", "Paramedic", "Firefighter", "Rescue"];
 
@@ -17,7 +24,7 @@ export default function ProfilePage() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
 
   const [role, setRole] = useState<UserRole>("Volunteer");
-  const [badgeStatus, setBadgeStatus] = useState<BadgeStatus>("pending");
+  const [badgeStatus, setBadgeStatus] = useState<BadgeStatus>("unverified");
   const [name, setName] = useState(userName);
   const [phone, setPhone] = useState("+91 98765 43210");
   const [skills, setSkills] = useState("First Aid, CPR, Search & Rescue");
@@ -30,6 +37,14 @@ export default function ProfilePage() {
   const [alertCount, setAlertCount] = useState(0);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Verification state
+  const [verDocs, setVerDocs] = useState<VerificationDoc[]>([]);
+  const [verLoading, setVerLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [verError, setVerError] = useState("");
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const verFileRef = useRef<HTMLInputElement>(null);
 
   const loadMyAlerts = useCallback(async () => {
     if (!user) return;
@@ -48,9 +63,31 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  const loadVerDocs = useCallback(async () => {
+    if (!user) return;
+    try {
+      const docs = await fetchMyVerifications(user.id);
+      setVerDocs(docs);
+
+      // Auto-determine badge status from docs
+      if (docs.some(d => d.status === "approved")) {
+        setBadgeStatus("verified");
+      } else if (docs.some(d => d.status === "pending")) {
+        setBadgeStatus("pending");
+      } else {
+        setBadgeStatus("unverified");
+      }
+    } catch {
+      setVerDocs([]);
+    } finally {
+      setVerLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     loadMyAlerts();
-  }, [loadMyAlerts]);
+    loadVerDocs();
+  }, [loadMyAlerts, loadVerDocs]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -65,10 +102,67 @@ export default function ProfilePage() {
     }
   };
 
+  const handleVerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setVerError("Only JPG, PNG, WebP, or PDF files are allowed.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setVerError("File must be under 10MB.");
+      return;
+    }
+
+    setVerError("");
+    setUploading(true);
+    try {
+      const fileUrl = await uploadVerificationDoc(file);
+      await submitVerification(fileUrl, file.name);
+      await loadVerDocs();
+    } catch (err: unknown) {
+      setVerError((err as Error).message || "Upload failed.");
+    } finally {
+      setUploading(false);
+      if (verFileRef.current) verFileRef.current.value = "";
+    }
+  };
+
+  const handleDeleteDoc = async (id: string) => {
+    setDeletingDocId(id);
+    try {
+      await deleteVerificationDoc(id);
+      setVerDocs(prev => prev.filter(d => d.id !== id));
+    } catch {
+      // silently fail
+    } finally {
+      setDeletingDocId(null);
+    }
+  };
+
   const handleSave = () => {
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case "approved": return <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />;
+      case "rejected": return <XCircle className="w-3.5 h-3.5 text-red-500" />;
+      default: return <Clock className="w-3.5 h-3.5 text-yellow-600" />;
+    }
+  };
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "approved": return "text-emerald-700 bg-emerald-50 border-emerald-200";
+      case "rejected": return "text-red-700 bg-red-50 border-red-200";
+      default: return "text-yellow-700 bg-yellow-50 border-yellow-200";
+    }
   };
 
   return (
@@ -76,7 +170,6 @@ export default function ProfilePage() {
 
       {/* Hero */}
       <div className="flex flex-col items-center gap-3 px-4 pt-8 pb-6 bg-gradient-to-b from-slate-50 to-background border-b border-border">
-        {/* Avatar */}
         <div className="relative">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-4xl font-black text-white shadow-lg">
             {name.charAt(0)}
@@ -94,7 +187,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Stats row */}
         <div className="flex gap-6 mt-1">
           {[
             { label: "Alerts Posted", value: String(alertCount) },
@@ -131,17 +223,14 @@ export default function ProfilePage() {
       {/* Profile Fields */}
       <div className="flex flex-col gap-4 px-4 pt-2">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Personal Info</h3>
-
         {[
-          { label: "Full Name",       value: name,   setter: setName,   type: "text" },
-          { label: "Phone Number",    value: phone,  setter: setPhone,  type: "tel"  },
-          { label: "Skills",          value: skills, setter: setSkills, type: "text" },
-          { label: "Languages",       value: langs,  setter: setLangs,  type: "text" },
+          { label: "Full Name",    value: name,   setter: setName,   type: "text" },
+          { label: "Phone Number", value: phone,  setter: setPhone,  type: "tel"  },
+          { label: "Skills",       value: skills, setter: setSkills, type: "text" },
+          { label: "Languages",    value: langs,  setter: setLangs,  type: "text" },
         ].map(({ label, value, setter, type }) => (
           <div key={label}>
-            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
-              {label}
-            </label>
+            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">{label}</label>
             <input
               type={type}
               value={value}
@@ -157,7 +246,6 @@ export default function ProfilePage() {
           </div>
         ))}
 
-        {/* Role selector */}
         <div>
           <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">Role</label>
           <div className="flex flex-wrap gap-2">
@@ -229,7 +317,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Verification */}
+      {/* ── Document Verification ── */}
       <div className="flex flex-col gap-3 px-4 pt-6">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-blue-600" />
@@ -238,32 +326,82 @@ export default function ProfilePage() {
 
         <BadgeStatusDisplay status={badgeStatus} />
 
-        {badgeStatus !== "verified" && (
-          <button className="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl border border-dashed border-blue-300 bg-blue-50/50 text-sm font-bold text-blue-700 hover:bg-blue-50 transition-colors">
-            <span className="flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Upload Verification Documents
-            </span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        {/* Error */}
+        {verError && (
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-[12px] text-red-600 font-medium animate-fade-up">
+            <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            {verError}
+          </div>
         )}
 
-        {/* Demo toggle */}
-        <div className="flex flex-wrap gap-2 mt-1">
-          {(["unverified", "pending", "verified"] as BadgeStatus[]).map(s => (
-            <button
-              key={s}
-              onClick={() => setBadgeStatus(s)}
-              className={cn(
-                "px-3 py-1 rounded-full text-[10px] font-bold border transition-all",
-                badgeStatus === s ? "bg-slate-800 text-white border-transparent" : "bg-muted text-muted-foreground border-transparent"
-              )}
-            >
-              Preview: {s}
-            </button>
-          ))}
-        </div>
-        <p className="text-[9px] text-muted-foreground">↑ Toggle badge status demo</p>
+        {/* Upload button */}
+        <input
+          ref={verFileRef}
+          type="file"
+          accept="image/*,.pdf"
+          onChange={handleVerUpload}
+          className="hidden"
+        />
+        <button
+          onClick={() => verFileRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl border border-dashed border-blue-300 bg-blue-50/50 text-sm font-bold text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50"
+        >
+          <span className="flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            {uploading ? "Uploading…" : "Upload Verification Document"}
+          </span>
+          {uploading ? (
+            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+          ) : (
+            <ChevronRight className="w-4 h-4" />
+          )}
+        </button>
+        <p className="text-[9px] text-muted-foreground -mt-1">Accepted: JPG, PNG, WebP, PDF · Max 10MB</p>
+
+        {/* Submitted documents list */}
+        {verLoading ? (
+          <div className="flex flex-col gap-2">
+            {[1].map(i => (
+              <div key={i} className="rounded-xl border border-border p-3 animate-pulse">
+                <div className="h-3 w-32 bg-gray-200 rounded mb-2" />
+                <div className="h-2.5 w-20 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : verDocs.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Submitted Documents</p>
+            {verDocs.map(doc => (
+              <div key={doc.id} className={cn("flex items-center gap-3 rounded-xl border p-3", statusColor(doc.status))}>
+                <FileText className="w-5 h-5 shrink-0 opacity-60" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">{doc.file_name}</p>
+                  <p className="text-[10px] opacity-70">
+                    {new Date(doc.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {statusIcon(doc.status)}
+                  <span className="text-[10px] font-bold capitalize">{doc.status}</span>
+                </div>
+                {doc.status === "pending" && (
+                  <button
+                    onClick={() => handleDeleteDoc(doc.id)}
+                    disabled={deletingDocId === doc.id}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-white/60 text-current opacity-50 hover:opacity-100 transition-all shrink-0 disabled:opacity-30"
+                    title="Remove"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Sign out */}

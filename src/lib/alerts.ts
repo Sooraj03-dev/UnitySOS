@@ -7,6 +7,28 @@ export interface CreateAlertInput {
   description: string;
   latitude?: number;
   longitude?: number;
+  photo_url?: string;
+}
+
+/** Upload a photo to Supabase Storage and return the public URL */
+export async function uploadAlertPhoto(file: File): Promise<string> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("You must be logged in.");
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const fileName = `${user.id}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("alert-photos")
+    .upload(fileName, file, { cacheControl: "3600", upsert: false });
+
+  if (error) throw error;
+
+  const { data: urlData } = supabase.storage
+    .from("alert-photos")
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
 }
 
 /** Post a new alert to Supabase */
@@ -26,6 +48,7 @@ export async function createAlert(input: CreateAlertInput) {
       description: input.description,
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
+      photo_url: input.photo_url ?? null,
     })
     .select()
     .single();
@@ -53,6 +76,7 @@ export async function fetchAlerts(limit = 20): Promise<AlertData[]> {
     userName: row.user_name,
     role: "Civilian" as const,
     badgeStatus: "unverified" as const,
+    photoUrl: row.photo_url || undefined,
   }));
 }
 
@@ -76,6 +100,7 @@ export async function fetchUserAlerts(userId: string, limit = 50): Promise<Alert
     userName: row.user_name,
     role: "Civilian" as const,
     badgeStatus: "unverified" as const,
+    photoUrl: row.photo_url || undefined,
   }));
 }
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MapPin, Camera, ChevronDown, CheckCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { MapPin, Camera, ChevronDown, CheckCircle, X, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AlertType } from "@/components/ui/AlertCard";
-import { createAlert } from "@/lib/alerts";
+import { createAlert, uploadAlertPhoto } from "@/lib/alerts";
 
 const alertTypes: AlertType[] = ["SOS", "Medical", "Blocked Route", "Resources", "General"];
 
@@ -24,6 +24,12 @@ export default function PostAlertPage() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
 
+  // Photo state
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // GPS location
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsStatus, setGpsStatus] = useState<"loading" | "ready" | "denied">("loading");
@@ -40,6 +46,32 @@ export default function PostAlertPage() {
     );
   }, []);
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5MB.");
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setError("");
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
@@ -47,11 +79,28 @@ export default function PostAlertPage() {
     setPosting(true);
 
     try {
+      let photoUrl: string | undefined;
+
+      // Upload photo if selected
+      if (photoFile) {
+        setUploadingPhoto(true);
+        try {
+          photoUrl = await uploadAlertPhoto(photoFile);
+        } catch (err: unknown) {
+          setError(`Photo upload failed: ${(err as Error).message}`);
+          setPosting(false);
+          setUploadingPhoto(false);
+          return;
+        }
+        setUploadingPhoto(false);
+      }
+
       await createAlert({
         type,
         description: description.trim(),
         latitude: coords?.lat,
         longitude: coords?.lng,
+        photo_url: photoUrl,
       });
       setSubmitted(true);
     } catch (err: unknown) {
@@ -74,7 +123,7 @@ export default function PostAlertPage() {
           </p>
         </div>
         <button
-          onClick={() => { setSubmitted(false); setDescription(""); setType("General"); }}
+          onClick={() => { setSubmitted(false); setDescription(""); setType("General"); handleRemovePhoto(); }}
           className="px-8 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors shadow-sos"
         >
           Post Another Alert
@@ -169,10 +218,48 @@ export default function PostAlertPage() {
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">
             Photo (optional)
           </label>
-          <button type="button" className="w-full h-24 rounded-2xl border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all">
-            <Camera className="w-6 h-6" strokeWidth={1.5} />
-            <span className="text-xs font-semibold">Tap to add photo</span>
-          </button>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoSelect}
+            className="hidden"
+          />
+
+          {photoPreview ? (
+            /* Photo preview */
+            <div className="relative rounded-2xl overflow-hidden border border-border">
+              <img
+                src={photoPreview}
+                alt="Selected photo"
+                className="w-full h-40 object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-2 left-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 text-white text-[10px] font-bold">
+                <Image className="w-3 h-3" />
+                {photoFile?.name}
+              </div>
+            </div>
+          ) : (
+            /* Upload button */
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-24 rounded-2xl border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
+            >
+              <Camera className="w-6 h-6" strokeWidth={1.5} />
+              <span className="text-xs font-semibold">Tap to add photo</span>
+            </button>
+          )}
         </div>
 
         {/* Location */}
@@ -196,7 +283,7 @@ export default function PostAlertPage() {
           disabled={!description.trim() || posting}
         >
           {posting
-            ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Posting…</>
+            ? <>{uploadingPhoto ? "Uploading photo…" : "Posting…"}<svg className="animate-spin w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></>
             : <>🚨 Post Alert Now</>
           }
         </button>
@@ -204,4 +291,3 @@ export default function PostAlertPage() {
     </div>
   );
 }
-

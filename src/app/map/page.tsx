@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Crosshair, Download, Loader2 } from "lucide-react";
 
 const LeafletMap = dynamic(() => import("@/components/ui/LeafletMap"), {
@@ -30,8 +30,55 @@ type FilterType = typeof filterTypes[number];
 
 export default function MapPage() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("All");
+  const [downloading, setDownloading] = useState(false);
+  const [liveCoords, setLiveCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
   const visiblePins = activeFilter === "All" ? allPins : allPins.filter(p => p.type === activeFilter);
+
+  const handleLocationUpdate = useCallback((lat: number, lng: number) => {
+    setLiveCoords({ lat, lng });
+  }, []);
+
+  const handleRecenter = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          // Dispatch a custom event the map can listen to
+          window.dispatchEvent(new CustomEvent("recenter-map", {
+            detail: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          }));
+        },
+        () => { /* denied */ },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!mapContainerRef.current || downloading) return;
+    setDownloading(true);
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(mapContainerRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        logging: false,
+      });
+
+      const link = document.createElement("a");
+      link.download = `unitysos-map-${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      // fallback: toast or alert
+      console.error("Failed to capture map");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px - 68px)" }}>
@@ -53,6 +100,14 @@ export default function MapPage() {
         ))}
       </div>
 
+      {/* Live location indicator */}
+      {liveCoords && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border-b border-blue-200 text-[10px] font-bold text-blue-700 shrink-0">
+          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          Live: {liveCoords.lat.toFixed(4)}° N, {liveCoords.lng.toFixed(4)}° E
+        </div>
+      )}
+
       {/* Map */}
       <div className="flex-1 relative" style={{ minHeight: 0 }}>
         <LeafletMap
@@ -62,15 +117,31 @@ export default function MapPage() {
           scrollWheelZoom={true}
           zoomControl={true}
           dragging={true}
+          liveLocation={true}
+          onLocationUpdate={handleLocationUpdate}
+          mapRef={mapContainerRef}
         />
 
         {/* Map Controls */}
         <div className="absolute right-3 bottom-6 z-[400] flex flex-col gap-2">
-          <button className="w-10 h-10 bg-white border border-gray-200 rounded-xl shadow-md flex items-center justify-center text-blue-600 hover:bg-gray-50 transition-colors">
+          <button
+            onClick={handleRecenter}
+            className="w-10 h-10 bg-white border border-gray-200 rounded-xl shadow-md flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors active:scale-95"
+            title="Center on my location"
+          >
             <Crosshair className="w-5 h-5" />
           </button>
-          <button className="w-10 h-10 bg-white border border-gray-200 rounded-xl shadow-md flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
-            <Download className="w-5 h-5" />
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-10 h-10 bg-white border border-gray-200 rounded-xl shadow-md flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50 active:scale-95"
+            title="Download map as image"
+          >
+            {downloading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Download className="w-5 h-5" />
+            )}
           </button>
         </div>
 
