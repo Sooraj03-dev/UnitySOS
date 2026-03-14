@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import TopNav from "@/components/layout/TopNav";
-import BottomNav from "@/components/layout/BottomNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
+import { AuthProvider } from "@/context/AuthContext";
+import LayoutShell from "@/components/layout/LayoutShell";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -24,14 +24,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body className="bg-[hsl(210,20%,98%)] antialiased">
-        <div className="relative min-h-screen flex flex-col">
-          <TopNav />
-          <main className="flex-1 max-w-lg mx-auto w-full bg-background shadow-2xl shadow-slate-200/50 min-h-[calc(100vh-56px)]">
+        <AuthProvider>
+          <LayoutShell>
             {children}
-          </main>
+          </LayoutShell>
           <OfflineBanner />
-          <BottomNav />
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

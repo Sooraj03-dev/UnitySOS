@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapPin, Camera, ChevronDown, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AlertType } from "@/components/ui/AlertCard";
+import { createAlert } from "@/lib/alerts";
 
 const alertTypes: AlertType[] = ["SOS", "Medical", "Blocked Route", "Resources", "General"];
 
@@ -20,12 +21,44 @@ export default function PostAlertPage() {
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [open, setOpen] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // GPS location
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<"loading" | "ready" | "denied">("loading");
+
+  useEffect(() => {
+    if (!navigator.geolocation) { setGpsStatus("denied"); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsStatus("ready");
+      },
+      () => setGpsStatus("denied"),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
-    setSubmitted(true);
-    // TODO: Post to Supabase + cache in Dexie
+    setError("");
+    setPosting(true);
+
+    try {
+      await createAlert({
+        type,
+        description: description.trim(),
+        latitude: coords?.lat,
+        longitude: coords?.lng,
+      });
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setError((err as Error).message ?? "Failed to post alert.");
+    } finally {
+      setPosting(false);
+    }
   };
 
   if (submitted) {
@@ -60,6 +93,16 @@ export default function PostAlertPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-4 pt-5">
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-start gap-2.5 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl animate-fade-up">
+            <svg className="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+            </svg>
+            <p className="text-[13px] text-red-600 font-medium">{error}</p>
+          </div>
+        )}
 
         {/* Category */}
         <div>
@@ -115,6 +158,7 @@ export default function PostAlertPage() {
             onChange={e => setDescription(e.target.value)}
             placeholder="Describe the emergency clearly. Include location details, number of people affected, etc."
             rows={4}
+            maxLength={300}
             className="w-full px-4 py-3 rounded-2xl border border-border bg-muted/30 text-sm font-medium resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/70 leading-relaxed"
           />
           <p className="text-[10px] text-muted-foreground mt-1 text-right">{description.length}/300</p>
@@ -136,19 +180,28 @@ export default function PostAlertPage() {
           <MapPin className="w-5 h-5 text-blue-600 shrink-0" />
           <div>
             <p className="text-xs font-bold text-blue-700">GPS Location</p>
-            <p className="text-[10px] text-blue-600">12.9716° N, 77.5946° E — will be attached automatically</p>
+            <p className="text-[10px] text-blue-600">
+              {gpsStatus === "loading" && "Acquiring GPS location…"}
+              {gpsStatus === "ready" && coords && `${coords.lat.toFixed(4)}° N, ${coords.lng.toFixed(4)}° E — will be attached`}
+              {gpsStatus === "denied" && "Location unavailable — alert will be posted without GPS"}
+            </p>
           </div>
+          {gpsStatus === "ready" && <span className="ml-auto w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />}
         </div>
 
         {/* Submit */}
         <button
           type="submit"
-          className="w-full py-4 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white text-sm font-extrabold shadow-sos hover:opacity-95 transition-opacity active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!description.trim()}
+          className="w-full py-4 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white text-sm font-extrabold shadow-sos hover:opacity-95 transition-opacity active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          disabled={!description.trim() || posting}
         >
-          🚨 Post Alert Now
+          {posting
+            ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Posting…</>
+            : <>🚨 Post Alert Now</>
+          }
         </button>
       </form>
     </div>
   );
 }
+

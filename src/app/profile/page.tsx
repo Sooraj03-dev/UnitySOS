@@ -5,13 +5,17 @@ import { Camera, Shield, Upload, LogOut, ChevronRight, Edit3 } from "lucide-reac
 import { BadgeStatusDisplay, RoleBadge, VerifiedBadge } from "@/components/ui/Badges";
 import type { UserRole, BadgeStatus } from "@/components/ui/Badges";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 const roles: UserRole[] = ["Civilian", "Volunteer", "Doctor", "Paramedic", "Firefighter", "Rescue"];
 
 export default function ProfilePage() {
+  const { user, logout, loading: authLoading } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+
   const [role, setRole] = useState<UserRole>("Volunteer");
   const [badgeStatus, setBadgeStatus] = useState<BadgeStatus>("pending");
-  const [name, setName] = useState("Rahul Sharma");
+  const [name, setName] = useState(userName);
   const [phone, setPhone] = useState("+91 98765 43210");
   const [skills, setSkills] = useState("First Aid, CPR, Search & Rescue");
   const [langs, setLangs] = useState("English, Hindi, Kannada");
@@ -173,9 +177,13 @@ export default function ProfilePage() {
 
       {/* Sign out */}
       <div className="px-4 pt-6">
-        <button className="flex items-center gap-2 w-full py-3.5 rounded-2xl border border-border text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors justify-center">
+        <button
+          onClick={logout}
+          disabled={authLoading}
+          className="flex items-center gap-2 w-full py-3.5 rounded-2xl border border-border text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors justify-center disabled:opacity-50"
+        >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          {authLoading ? "Signing out…" : "Sign Out"}
         </button>
       </div>
     </div>

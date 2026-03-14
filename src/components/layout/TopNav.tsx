@@ -4,12 +4,18 @@ import Link from "next/link";
 import { Bell, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 type ConnStatus = "online" | "syncing" | "offline";
 
 export default function TopNav() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<ConnStatus>("online");
   const [notifCount] = useState(3);
+
+  const userInitial = user?.user_metadata?.full_name?.charAt(0)?.toUpperCase()
+    || user?.email?.charAt(0)?.toUpperCase()
+    || "?";
 
   useEffect(() => {
     const handleOnline = () => { setStatus("syncing"); setTimeout(() => setStatus("online"), 2500); };
@@ -65,9 +71,9 @@ export default function TopNav() {
         </button>
 
         {/* Avatar */}
-        <button className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-600 hover:scale-105 transition-transform shrink-0 font-bold text-sm">
-          R
-        </button>
+        <Link href="/profile" className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-white hover:scale-105 transition-transform shrink-0 font-bold text-sm">
+          {userInitial}
+        </Link>
       </div>
     </header>
   );
