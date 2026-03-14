@@ -261,10 +261,12 @@ export function useWebRTCPeers(): UseWebRTCPeersReturn {
   // ── Cleanup on unmount ───────────────────────────────────────────
 
   useEffect(() => {
+    const connections = connectionsRef.current;
+    const signaling = signalingRef.current;
     return () => {
-      Array.from(connectionsRef.current.values()).forEach((pc) => pc.close());
-      connectionsRef.current.clear();
-      signalingRef.current?.leave();
+      Array.from(connections.values()).forEach((pc) => pc.close());
+      connections.clear();
+      signaling?.leave();
     };
   }, []);
 

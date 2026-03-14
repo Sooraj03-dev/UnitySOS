@@ -84,7 +84,7 @@ export function AlertToastProvider({ children }: { children: ReactNode }) {
             body: `${description}\n— ${userName}`,
             tag: `alert-${row.id}`,
             renotify: true,
-          });
+          } as NotificationOptions & { renotify: boolean });
         }
       )
       .subscribe();

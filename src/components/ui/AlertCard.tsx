@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { MapPin, Clock } from "lucide-react";
 import { RoleBadge, VerifiedBadge } from "@/components/ui/Badges";
 import type { UserRole, BadgeStatus } from "@/components/ui/Badges";
@@ -53,11 +54,12 @@ export function AlertCard({ alert, compact }: AlertCardProps) {
       {/* Photo thumbnail */}
       {alert.photoUrl && (
         <div className="rounded-xl overflow-hidden border border-border">
-          <img
+          <Image
             src={alert.photoUrl}
             alt="Alert photo"
+            width={600}
+            height={144}
             className="w-full h-36 object-cover"
-            loading="lazy"
           />
         </div>
       )}
