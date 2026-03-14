@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { MapIcon, Users, Megaphone, Package, Bluetooth, ShieldAlert, ShieldCheck, Zap, ChevronRight, Signal } from "lucide-react";
+import { MapIcon, Users, Megaphone, Package, Radio, ShieldAlert, ShieldCheck, Zap, ChevronRight, Signal } from "lucide-react";
 import SOSButton from "@/components/ui/SOSButton";
 import AlertStatusPanel from "@/components/ui/AlertStatusPanel";
 import { AlertCard } from "@/components/ui/AlertCard";
@@ -17,7 +17,7 @@ const quickActions = [
   { label: "Nearby",        icon: Users,        color: "bg-green-100 text-green-600",   href: "/nearby" },
   { label: "Post Alert",    icon: Megaphone,    color: "bg-rose-100 text-rose-600",     href: "/post-alert" },
   { label: "Resources",     icon: Package,      color: "bg-purple-100 text-purple-600", href: "/resources" },
-  { label: "Bluetooth",     icon: Bluetooth,    color: "bg-indigo-100 text-indigo-600", href: "/bluetooth" },
+  { label: "P2P / BLE",     icon: Radio,        color: "bg-indigo-100 text-indigo-600", href: "/bluetooth" },
   { label: "SOS Request",   icon: ShieldAlert,  color: "bg-red-100 text-red-600",       href: "/sos-request" },
   { label: "Live Updates",  icon: Zap,          color: "bg-amber-100 text-amber-600",   href: "/updates" },
   { label: "Admin",         icon: ShieldCheck,  color: "bg-slate-100 text-slate-600",   href: "/admin" },
