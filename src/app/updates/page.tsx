@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Radio, Bell, AlertTriangle, MapPin, Truck, CheckCircle, Clock, Heart, Package, Info, Zap, Megaphone } from "lucide-react";
-import { fetchAlerts } from "@/lib/alerts";
+import { useRealtimeAlerts } from "@/hooks/useRealtimeAlerts";
 import type { AlertData } from "@/components/ui/AlertCard";
 
 type UpdateType = "sos" | "rescue" | "resource" | "info" | "medical" | "resolved" | "general" | "blocked";
@@ -58,15 +58,10 @@ const filters = ["All", "SOS", "Medical", "Resource", "Blocked Route", "General"
 
 export default function UpdatesPage() {
   const [activeFilter, setActiveFilter] = useState<string>("All");
-  const [updates, setUpdates] = useState<Update[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAlerts(30)
-      .then((alerts) => setUpdates(alerts.map(alertToUpdate)))
-      .catch(() => setUpdates([]))
-      .finally(() => setLoading(false));
-  }, []);
+  // Live-updating alerts from Supabase Realtime
+  const { alerts: liveAlerts, loading } = useRealtimeAlerts({ limit: 30 });
+  const updates = liveAlerts.map(alertToUpdate);
 
   const filtered = activeFilter === "All"
     ? updates

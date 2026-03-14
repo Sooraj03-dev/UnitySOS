@@ -4,6 +4,7 @@ import "./globals.css";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import { AuthProvider } from "@/context/AuthContext";
 import { WebRTCProvider } from "@/context/WebRTCContext";
+import { AlertToastProvider } from "@/context/AlertToastContext";
 import LayoutShell from "@/components/layout/LayoutShell";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -27,10 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-[hsl(210,20%,98%)] antialiased">
         <AuthProvider>
           <WebRTCProvider>
-            <LayoutShell>
-              {children}
-            </LayoutShell>
-            <OfflineBanner />
+            <AlertToastProvider>
+              <LayoutShell>
+                {children}
+              </LayoutShell>
+              <OfflineBanner />
+            </AlertToastProvider>
           </WebRTCProvider>
         </AuthProvider>
       </body>

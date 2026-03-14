@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapIcon, Users, Megaphone, Package, Radio, ShieldAlert, ShieldCheck, Zap, ChevronRight, Signal } from "lucide-react";
 import SOSButton from "@/components/ui/SOSButton";
 import AlertStatusPanel from "@/components/ui/AlertStatusPanel";
 import { AlertCard } from "@/components/ui/AlertCard";
-import type { AlertData } from "@/components/ui/AlertCard";
 import { ResponderCard } from "@/components/ui/ResponderCard";
 import MapPreview from "@/components/ui/MapPreview";
 import { mockResponders } from "@/lib/mockData";
-import { fetchAlerts } from "@/lib/alerts";
+import { useRealtimeAlerts } from "@/hooks/useRealtimeAlerts";
 
 const quickActions = [
   { label: "Open Map",      icon: MapIcon,      color: "bg-blue-100 text-blue-600",     href: "/map" },
@@ -26,16 +25,9 @@ const quickActions = [
 export default function HomePage() {
   const router = useRouter();
   const [sosFired, setSosFired] = useState(false);
-  const [alerts, setAlerts] = useState<AlertData[]>([]);
-  const [alertsLoading, setAlertsLoading] = useState(true);
 
-  // Fetch live alerts from Supabase
-  useEffect(() => {
-    fetchAlerts(10)
-      .then(setAlerts)
-      .catch(() => setAlerts([]))
-      .finally(() => setAlertsLoading(false));
-  }, []);
+  // Live-updating alerts from Supabase Realtime
+  const { alerts, loading: alertsLoading } = useRealtimeAlerts({ limit: 10 });
 
   const handleSOS = () => {
     setSosFired(true);
