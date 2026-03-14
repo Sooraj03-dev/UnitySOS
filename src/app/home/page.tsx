@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MapIcon, Users, Megaphone, Package, Bluetooth, ShieldAlert, ShieldCheck, Zap, ChevronRight, Signal } from "lucide-react";
 import SOSButton from "@/components/ui/SOSButton";
 import { AlertCard } from "@/components/ui/AlertCard";
+import type { AlertData } from "@/components/ui/AlertCard";
 import { ResponderCard } from "@/components/ui/ResponderCard";
 import MapPreview from "@/components/ui/MapPreview";
-import { mockAlerts, mockResponders } from "@/lib/mockData";
+import { mockResponders } from "@/lib/mockData";
+import { fetchAlerts } from "@/lib/alerts";
 
 const quickActions = [
   { label: "Open Map",      icon: MapIcon,      color: "bg-blue-100 text-blue-600",     href: "/map" },
@@ -23,6 +25,16 @@ const quickActions = [
 export default function HomePage() {
   const router = useRouter();
   const [sosFired, setSosFired] = useState(false);
+  const [alerts, setAlerts] = useState<AlertData[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+
+  // Fetch live alerts from Supabase
+  useEffect(() => {
+    fetchAlerts(10)
+      .then(setAlerts)
+      .catch(() => setAlerts([]))
+      .finally(() => setAlertsLoading(false));
+  }, []);
 
   const handleSOS = () => {
     setSosFired(true);
@@ -112,14 +124,36 @@ export default function HomePage() {
             <span className="text-[10px] font-semibold text-red-600">Live</span>
           </div>
         </div>
-        <div className="flex flex-col gap-3">
-          {mockAlerts.map(a => <AlertCard key={a.id} alert={a} />)}
-        </div>
-        <button className="w-full mt-4 py-3.5 rounded-2xl bg-muted text-sm font-bold text-muted-foreground hover:bg-muted/80 transition-colors">
-          View All Alerts
+
+        {alertsLoading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-4 animate-pulse">
+                <div className="h-4 w-20 bg-gray-200 rounded-full mb-3" />
+                <div className="h-3 w-full bg-gray-200 rounded mb-2" />
+                <div className="h-3 w-3/4 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-sm font-bold text-gray-400">No alerts yet</p>
+            <p className="text-xs text-gray-400 mt-1">Be the first to post an emergency alert</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {alerts.map(a => <AlertCard key={a.id} alert={a} />)}
+          </div>
+        )}
+
+        <button
+          onClick={() => router.push("/post-alert")}
+          className="w-full mt-4 py-3.5 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-sm font-bold text-white hover:opacity-95 transition-opacity shadow-sos"
+        >
+          🚨 Post an Alert
         </button>
       </section>
 
     </div>
   );
-}  
+}

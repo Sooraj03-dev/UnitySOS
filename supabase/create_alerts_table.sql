@@ -35,3 +35,6 @@ CREATE POLICY "Users can delete own alerts"
 
 -- Index for fast time-based queries
 CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON public.alerts (created_at DESC);
+
+-- Index for fast user-scoped queries
+CREATE INDEX IF NOT EXISTS idx_alerts_user_id ON public.alerts (user_id);

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, Shield, Upload, LogOut, ChevronRight, Edit3 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Camera, Shield, Upload, LogOut, ChevronRight, Edit3, Trash2, AlertTriangle } from "lucide-react";
 import { BadgeStatusDisplay, RoleBadge, VerifiedBadge } from "@/components/ui/Badges";
 import type { UserRole, BadgeStatus } from "@/components/ui/Badges";
+import { AlertCard } from "@/components/ui/AlertCard";
+import type { AlertData } from "@/components/ui/AlertCard";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { fetchUserAlerts, deleteAlert, countUserAlerts } from "@/lib/alerts";
 
 const roles: UserRole[] = ["Civilian", "Volunteer", "Doctor", "Paramedic", "Firefighter", "Rescue"];
 
@@ -21,6 +24,46 @@ export default function ProfilePage() {
   const [langs, setLangs] = useState("English, Hindi, Kannada");
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // My Alerts state
+  const [myAlerts, setMyAlerts] = useState<AlertData[]>([]);
+  const [alertCount, setAlertCount] = useState(0);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadMyAlerts = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [alerts, count] = await Promise.all([
+        fetchUserAlerts(user.id),
+        countUserAlerts(user.id),
+      ]);
+      setMyAlerts(alerts);
+      setAlertCount(count);
+    } catch {
+      setMyAlerts([]);
+      setAlertCount(0);
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadMyAlerts();
+  }, [loadMyAlerts]);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteAlert(id);
+      setMyAlerts(prev => prev.filter(a => a.id !== id));
+      setAlertCount(prev => Math.max(0, prev - 1));
+    } catch {
+      // silently fail
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleSave = () => {
     setEditing(false);
@@ -54,7 +97,7 @@ export default function ProfilePage() {
         {/* Stats row */}
         <div className="flex gap-6 mt-1">
           {[
-            { label: "Alerts Posted", value: "12" },
+            { label: "Alerts Posted", value: String(alertCount) },
             { label: "People Helped", value: "47" },
             { label: "Rating",        value: "4.9★" },
           ].map(({ label, value }) => (
@@ -136,6 +179,54 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── My Alerts ── */}
+      <div className="flex flex-col gap-3 px-4 pt-6">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-600" />
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">My Alerts</h3>
+        </div>
+
+        {alertsLoading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2].map(i => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-4 animate-pulse">
+                <div className="h-4 w-20 bg-gray-200 rounded-full mb-3" />
+                <div className="h-3 w-full bg-gray-200 rounded mb-2" />
+                <div className="h-3 w-3/4 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : myAlerts.length === 0 ? (
+          <div className="text-center py-8 rounded-2xl border border-dashed border-border bg-muted/20">
+            <p className="text-sm font-bold text-gray-400">No alerts posted yet</p>
+            <p className="text-xs text-gray-400 mt-1">Your posted alerts will appear here</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {myAlerts.map(alert => (
+              <div key={alert.id} className="relative">
+                <AlertCard alert={alert} compact />
+                <button
+                  onClick={() => handleDelete(alert.id)}
+                  disabled={deletingId === alert.id}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-500 hover:bg-red-100 hover:text-red-700 transition-all disabled:opacity-50"
+                  title="Delete alert"
+                >
+                  {deletingId === alert.id ? (
+                    <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Verification */}

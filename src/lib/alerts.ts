@@ -44,7 +44,7 @@ export async function fetchAlerts(limit = 20): Promise<AlertData[]> {
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
+  return (data ?? []).map((row: Record<string, string>) => ({
     id: row.id,
     type: row.type as AlertType,
     description: row.description,
@@ -54,6 +54,46 @@ export async function fetchAlerts(limit = 20): Promise<AlertData[]> {
     role: "Civilian" as const,
     badgeStatus: "unverified" as const,
   }));
+}
+
+/** Fetch only the current user's alerts from Supabase */
+export async function fetchUserAlerts(userId: string, limit = 50): Promise<AlertData[]> {
+  const { data, error } = await supabase
+    .from("alerts")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: Record<string, string>) => ({
+    id: row.id,
+    type: row.type as AlertType,
+    description: row.description,
+    distance: "—",
+    time: formatTimeAgo(row.created_at),
+    userName: row.user_name,
+    role: "Civilian" as const,
+    badgeStatus: "unverified" as const,
+  }));
+}
+
+/** Delete an alert by its ID */
+export async function deleteAlert(id: string): Promise<void> {
+  const { error } = await supabase.from("alerts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Count alerts posted by a specific user */
+export async function countUserAlerts(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("alerts")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  return count ?? 0;
 }
 
 /** Helper to format timestamps as relative time */
