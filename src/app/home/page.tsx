@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MapIcon, Users, Megaphone, Package, Bluetooth, ShieldAlert, ShieldCheck, Zap, ChevronRight, Signal } from "lucide-react";
 import SOSButton from "@/components/ui/SOSButton";
+import AlertStatusPanel from "@/components/ui/AlertStatusPanel";
 import { AlertCard } from "@/components/ui/AlertCard";
 import type { AlertData } from "@/components/ui/AlertCard";
 import { ResponderCard } from "@/components/ui/ResponderCard";
@@ -57,6 +58,12 @@ export default function HomePage() {
             Your GPS location will be shared with nearby responders instantly.
           </p>
         </div>
+      </section>
+
+      {/* ── Alert Status ── */}
+      <section className="px-4 pt-4">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Alert Status</h3>
+        <AlertStatusPanel />
       </section>
 
       {/* ── Location Sharing Indicator ── */}
